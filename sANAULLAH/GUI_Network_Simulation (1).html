@@ -1,0 +1,1254 @@
+!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Network Attack Path Simulation — CSC 262</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: #eef0f4;
+        color: #1c2333;
+        font-size: 14px;
+        min-height: 100vh;
+      }
+      .app-header {
+        background: #1a3557;
+        color: white;
+        padding: 14px 28px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+      }
+      .header-title h1 {
+        font-size: 17px;
+        font-weight: 600;
+      }
+      .header-title p {
+        font-size: 12px;
+        color: #a8c0d9;
+        margin-top: 2px;
+      }
+      .header-meta {
+        text-align: right;
+        font-size: 12px;
+        color: #a8c0d9;
+        line-height: 1.7;
+      }
+      .header-meta strong {
+        color: #d4e6f7;
+      }
+      .app-body {
+        display: grid;
+        grid-template-columns: 220px 1fr 260px;
+        grid-template-rows: 1fr auto;
+        gap: 14px;
+        padding: 14px;
+        height: calc(100vh - 58px);
+      }
+      .card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.09);
+        overflow: hidden;
+      }
+      .card-header {
+        padding: 11px 16px;
+        background: #f4f6f9;
+        border-bottom: 1px solid #e1e5ec;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        color: #4a5568;
+      }
+      .left-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        overflow-y: auto;
+      }
+      .algo-list {
+        padding: 10px;
+      }
+      .algo-btn {
+        width: 100%;
+        padding: 9px 12px;
+        margin-bottom: 5px;
+        background: #f7f9fc;
+        border: 1px solid #dde2ec;
+        border-radius: 6px;
+        cursor: pointer;
+        text-align: left;
+        font-size: 13px;
+        color: #2d3748;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        transition: background 0.15s;
+        font-family: inherit;
+      }
+      .algo-btn:hover {
+        background: #ebf0fa;
+        border-color: #9db8da;
+      }
+      .algo-btn.active {
+        background: #1a3557;
+        border-color: #1a3557;
+        color: white;
+        font-weight: 600;
+      }
+      .algo-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .algo-tag {
+        font-size: 10px;
+        padding: 1px 6px;
+        border-radius: 3px;
+        background: rgba(255, 255, 255, 0.15);
+        margin-left: auto;
+        font-weight: 600;
+      }
+      .algo-btn:not(.active) .algo-tag {
+        background: #e2e8f0;
+        color: #718096;
+      }
+      .legend-list {
+        padding: 12px 14px;
+      }
+      .legend-row {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        margin-bottom: 7px;
+        font-size: 12px;
+        color: #4a5568;
+      }
+      .legend-dot {
+        width: 13px;
+        height: 13px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+      .center-panel {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+      .canvas-wrap {
+        flex: 1;
+        padding: 10px;
+        min-height: 0;
+      }
+      canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      .canvas-controls {
+        padding: 10px 14px;
+        border-top: 1px solid #e1e5ec;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: #f4f6f9;
+        flex-shrink: 0;
+      }
+      .selected-label {
+        font-size: 12px;
+        color: #718096;
+      }
+      .selected-label strong {
+        color: #1a3557;
+        font-size: 13px;
+      }
+      .btn-run {
+        background: #1a3557;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 8px 20px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: inherit;
+        transition: background 0.15s;
+      }
+      .btn-run:hover {
+        background: #143047;
+      }
+      .btn-run:disabled {
+        background: #8fa8c2;
+        cursor: not-allowed;
+      }
+      .btn-run-all {
+        background: white;
+        color: #1a3557;
+        border: 1.5px solid #1a3557;
+        border-radius: 6px;
+        padding: 7px 18px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: inherit;
+        margin-left: auto;
+      }
+      .btn-run-all:hover {
+        background: #ebf0fa;
+      }
+      .btn-run-all:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .step-label {
+        font-size: 11px;
+        color: #718096;
+        font-weight: 600;
+        min-width: 80px;
+        display: none;
+      }
+      .step-label.on {
+        display: block;
+      }
+      .right-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        overflow-y: auto;
+      }
+      .metric-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        padding: 12px;
+      }
+      .metric-box {
+        background: #f7f9fc;
+        border: 1px solid #dde2ec;
+        border-radius: 6px;
+        padding: 10px;
+      }
+      .metric-box.fail {
+        background: #fef0ef;
+        border-color: #fadbd8;
+      }
+      .metric-label {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.7px;
+        color: #718096;
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+      .metric-value {
+        font-size: 22px;
+        font-weight: 700;
+        color: #1a3557;
+        line-height: 1;
+      }
+      .metric-value.red {
+        font-size: 15px;
+        color: #c0392b;
+        padding-top: 4px;
+      }
+      .metric-sub {
+        font-size: 10px;
+        color: #a0aec0;
+        margin-top: 3px;
+      }
+      .path-card {
+        padding: 12px;
+      }
+      .path-label {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.7px;
+        color: #718096;
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+      .path-nodes {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px;
+      }
+      .path-node {
+        background: #ebf0fa;
+        border: 1px solid #c3d4e8;
+        border-radius: 4px;
+        padding: 3px 7px;
+        font-size: 11px;
+        font-weight: 600;
+        color: #1a3557;
+      }
+      .path-node.s {
+        background: #fdecea;
+        border-color: #f5b7b1;
+        color: #c0392b;
+      }
+      .path-node.g {
+        background: #e9f7ef;
+        border-color: #a9dfbf;
+        color: #1e8449;
+      }
+      .path-node.x {
+        background: #fdedec;
+        border-color: #e74c3c;
+        color: #922b21;
+        font-weight: 700;
+      }
+      .path-arrow {
+        color: #a0aec0;
+        font-size: 12px;
+        margin: 0 1px;
+      }
+      .path-empty {
+        font-size: 12px;
+        color: #a0aec0;
+        font-style: italic;
+      }
+      .warn-box {
+        margin: 0 12px 12px;
+        padding: 10px 12px;
+        background: #fdedec;
+        border: 1px solid #f1948a;
+        border-radius: 6px;
+        font-size: 12px;
+        color: #922b21;
+        line-height: 1.5;
+        display: none;
+      }
+      .warn-box.on {
+        display: block;
+      }
+      .hc-info {
+        margin: 0 12px 12px;
+        padding: 9px 12px;
+        background: #fef9e7;
+        border: 1px solid #f7dc6f;
+        border-radius: 6px;
+        font-size: 11px;
+        color: #7d6608;
+        display: none;
+      }
+      .hc-info.on {
+        display: block;
+      }
+      .table-section {
+        grid-column: 1 / -1;
+        max-height: 220px;
+        display: none;
+      }
+      .table-section.on {
+        display: block;
+      }
+      .cmp-wrap {
+        padding: 12px;
+        overflow-x: auto;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12.5px;
+      }
+      th {
+        padding: 8px 12px;
+        text-align: left;
+        background: #f4f6f9;
+        border-bottom: 2px solid #dde2ec;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        color: #4a5568;
+        white-space: nowrap;
+      }
+      td {
+        padding: 7px 12px;
+        border-bottom: 1px solid #eef0f4;
+        color: #2d3748;
+      }
+      tr:last-child td {
+        border-bottom: none;
+      }
+      tr.best td {
+        background: #eaf6ee;
+      }
+      tr.best td:nth-child(4) {
+        color: #1e8449;
+        font-weight: 700;
+      }
+      tr.hcrow td {
+        background: #fef0ef;
+      }
+      tr:hover td {
+        background: #f7f9fc;
+      }
+      .tag {
+        display: inline-block;
+        font-size: 10px;
+        padding: 1px 6px;
+        border-radius: 3px;
+        font-weight: 600;
+        margin-left: 5px;
+      }
+      .t-opt {
+        background: #d5f0e0;
+        color: #1e6b38;
+      }
+      .t-eff {
+        background: #d4e6f7;
+        color: #1a4c7c;
+      }
+      .t-fail {
+        background: #fadbd8;
+        color: #922b21;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="header-title">
+        <h1>Network Attack Path Simulation System</h1>
+        <p>
+          AI Search Algorithm Visualizer &mdash; CSC 262 Artificial Intelligence
+        </p>
+      </div>
+      <div class="header-meta">
+        <strong>Sanaullah Jadoon</strong> &nbsp;|&nbsp; FA24-BCS-130<br />
+        BCS-4C &nbsp;|&nbsp; COMSATS University Islamabad
+      </div>
+    </header>
+
+    <div class="app-body">
+      <div class="left-panel">
+        <div class="card">
+          <div class="card-header">Select Algorithm</div>
+          <div class="algo-list">
+            <button class="algo-btn active" onclick="sel('BFS', this)">
+              Breadth-First Search <span class="algo-tag">BFS</span>
+            </button>
+            <button class="algo-btn" onclick="sel('DFS', this)">
+              Depth-First Search <span class="algo-tag">DFS</span>
+            </button>
+            <button class="algo-btn" onclick="sel('UCS', this)">
+              Uniform Cost Search <span class="algo-tag">UCS</span>
+            </button>
+            <button class="algo-btn" onclick="sel('ASTAR', this)">
+              A* Search <span class="algo-tag">A*</span>
+            </button>
+            <button class="algo-btn" onclick="sel('HC', this)">
+              Hill Climbing <span class="algo-tag">LOCAL</span>
+            </button>
+            <button class="algo-btn" onclick="sel('MM', this)">
+              Minimax <span class="algo-tag">ADVERSARIAL</span>
+            </button>
+            <button class="algo-btn" onclick="sel('AB', this)">
+              Alpha-Beta Pruning <span class="algo-tag">ADVERSARIAL</span>
+            </button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">Legend</div>
+          <div class="legend-list">
+            <div class="legend-row">
+              <div
+                class="legend-dot"
+                style="background: #c0392b; border: 2px solid #922b21"
+              ></div>
+              Node 0 — Entry (Start)
+            </div>
+            <div class="legend-row">
+              <div
+                class="legend-dot"
+                style="background: #1e8449; border: 2px solid #196f3d"
+              ></div>
+              Node 7 — Database (Goal)
+            </div>
+            <div class="legend-row">
+              <div
+                class="legend-dot"
+                style="background: #e67e22; border: 2px solid #ca6f1e"
+              ></div>
+              On discovered path
+            </div>
+            <div class="legend-row">
+              <div
+                class="legend-dot"
+                style="background: #7b241c; border: 2px solid #641e16"
+              ></div>
+              Stuck — local maximum
+            </div>
+            <div class="legend-row">
+              <div
+                class="legend-dot"
+                style="background: #bdc3c7; border: 2px solid #95a5a6"
+              ></div>
+              Not visited
+            </div>
+            <div
+              class="legend-row"
+              style="
+                margin-top: 8px;
+                padding-top: 8px;
+                border-top: 1px solid #eef0f4;
+              "
+            >
+              <div
+                style="
+                  width: 28px;
+                  height: 3px;
+                  background: #c0392b;
+                  border-radius: 2px;
+                  flex-shrink: 0;
+                "
+              ></div>
+              Attack path edge
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">Network Info</div>
+          <div
+            style="
+              padding: 12px;
+              font-size: 12px;
+              color: #4a5568;
+              line-height: 2.1;
+            "
+          >
+            <div>
+              <span style="color: #718096">Nodes:</span> <strong>10</strong>
+            </div>
+            <div>
+              <span style="color: #718096">Edges:</span> <strong>16</strong>
+            </div>
+            <div>
+              <span style="color: #718096">Start:</span> <strong>Node 0</strong>
+            </div>
+            <div>
+              <span style="color: #718096">Goal:</span> <strong>Node 7</strong>
+            </div>
+            <div>
+              <span style="color: #718096">Weights:</span>
+              <strong>1 – 8</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card center-panel">
+        <div class="canvas-wrap"><canvas id="cv"></canvas></div>
+        <div class="canvas-controls">
+          <div class="selected-label">
+            Algorithm: <strong id="selLabel">BFS</strong>
+          </div>
+          <button class="btn-run" id="btnRun" onclick="runSel()">
+            &#9654; Run
+          </button>
+          <span class="step-label" id="stepLbl"></span>
+          <button class="btn-run-all" id="btnAll" onclick="runAll()">
+            &#9654;&#9654; Run All
+          </button>
+        </div>
+      </div>
+
+      <div class="right-panel">
+        <div class="card">
+          <div class="card-header">Metrics</div>
+          <div class="metric-grid">
+            <div class="metric-box" id="boxCost">
+              <div class="metric-label">Total Cost</div>
+              <div class="metric-value" id="mCost">—</div>
+              <div class="metric-sub" id="mCostSub">Vulnerability score</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-label">Nodes Expanded</div>
+              <div class="metric-value" id="mNodes">—</div>
+              <div class="metric-sub">Search space used</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-label">Time</div>
+              <div
+                class="metric-value"
+                id="mTime"
+                style="font-size: 15px; padding-top: 4px"
+              >
+                —
+              </div>
+              <div class="metric-sub">Execution (ms)</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-label">Algorithm</div>
+              <div
+                class="metric-value"
+                id="mAlgo"
+                style="font-size: 15px; padding-top: 4px"
+              >
+                —
+              </div>
+              <div class="metric-sub">Selected</div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">Path / Result</div>
+          <div class="path-card">
+            <div class="path-label">Node sequence</div>
+            <div class="path-nodes" id="pathDisp">
+              <span class="path-empty">Run an algorithm to see the path</span>
+            </div>
+          </div>
+          <div class="warn-box" id="warnBox"></div>
+          <div class="hc-info" id="hcInfo">
+            Note: Hill Climbing uses a heuristic designed to demonstrate a local
+            maximum failure case, as required by the project specification.
+          </div>
+        </div>
+        <div class="card" style="flex: 1">
+          <div class="card-header">About</div>
+          <div
+            style="
+              padding: 12px;
+              font-size: 12px;
+              color: #4a5568;
+              line-height: 1.75;
+              overflow-y: auto;
+            "
+          >
+            <p style="margin-bottom: 7px">
+              <strong>BFS</strong> — level by level. Finds fewest hops, ignores
+              weights.
+            </p>
+            <p style="margin-bottom: 7px">
+              <strong>DFS</strong> — deep first. Fast but non-optimal.
+            </p>
+            <p style="margin-bottom: 7px">
+              <strong>UCS</strong> — lowest cost first. Always optimal.
+            </p>
+            <p style="margin-bottom: 7px">
+              <strong>A*</strong> — cost + heuristic. Near-optimal, fewest
+              nodes.
+            </p>
+            <p style="margin-bottom: 7px">
+              <strong>Hill Climbing</strong> — greedy local. Gets stuck at local
+              max (failure case demonstrated).
+            </p>
+            <p style="margin-bottom: 7px">
+              <strong>Minimax</strong> — attacker vs defender. Full tree.
+            </p>
+            <p>
+              <strong>Alpha-Beta</strong> — Minimax + pruning. Same result,
+              fewer nodes.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card table-section" id="tblSec">
+        <div class="card-header">Comparison Table — All Algorithms</div>
+        <div class="cmp-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Algorithm</th>
+                <th>Category</th>
+                <th>Path Found</th>
+                <th>Cost</th>
+                <th>Nodes Expanded</th>
+                <th>Time (ms)</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="tblBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const NL = {
+        0: "Entry WS",
+        1: "Router",
+        2: "Switch",
+        3: "Firewall",
+        4: "Web Srv",
+        5: "Mail Srv",
+        6: "Int. Net",
+        7: "Database",
+        8: "Admin WS",
+        9: "Backup Srv",
+      };
+      const EDGES = [
+        [0, 1, 2],
+        [0, 2, 4],
+        [1, 2, 1],
+        [1, 3, 5],
+        [1, 4, 7],
+        [2, 4, 3],
+        [2, 5, 6],
+        [3, 6, 4],
+        [3, 8, 5],
+        [4, 6, 5],
+        [4, 9, 4],
+        [5, 6, 3],
+        [6, 7, 8],
+        [6, 8, 2],
+        [8, 7, 3],
+        [9, 7, 6],
+      ];
+      const H = {
+        0: 18,
+        1: 14,
+        2: 13,
+        3: 10,
+        4: 9,
+        5: 9,
+        6: 5,
+        7: 0,
+        8: 3,
+        9: 7,
+      };
+      // HC heuristic: node 6 gets h=10 (worse than node 4's h=9) -> trap at node 4
+      const HC_H = {
+        0: 18,
+        1: 14,
+        2: 13,
+        3: 10,
+        4: 9,
+        5: 9,
+        6: 10,
+        7: 0,
+        8: 3,
+        9: 20,
+      };
+      const S = 0,
+        G = 7;
+      const g = {};
+      for (let i = 0; i < 10; i++) g[i] = [];
+      EDGES.forEach(([u, v, w]) => {
+        g[u].push([v, w]);
+        g[v].push([u, w]);
+      });
+      const LAY = {
+        0: [0.05, 0.5],
+        1: [0.22, 0.72],
+        2: [0.22, 0.28],
+        3: [0.4, 0.88],
+        4: [0.4, 0.5],
+        5: [0.4, 0.12],
+        6: [0.6, 0.5],
+        7: [0.92, 0.5],
+        8: [0.6, 0.82],
+        9: [0.6, 0.18],
+      };
+
+      const cv = document.getElementById("cv");
+      const ctx = cv.getContext("2d");
+      function gp(id) {
+        const [fx, fy] = LAY[id];
+        return [fx * cv.width, fy * cv.height];
+      }
+
+      function draw(path, stk) {
+        cv.width = cv.offsetWidth;
+        cv.height = cv.offsetHeight;
+        const R = Math.min(cv.width, cv.height) * 0.054;
+        const pe = new Set(),
+          ps = new Set(path || []);
+        if (path && path.length > 1)
+          for (let i = 0; i < path.length - 1; i++) {
+            const a = Math.min(path[i], path[i + 1]),
+              b = Math.max(path[i], path[i + 1]);
+            pe.add(a + "-" + b);
+          }
+
+        // edges
+        EDGES.forEach(([u, v, w]) => {
+          const [x1, y1] = gp(u),
+            [x2, y2] = gp(v);
+          const k = Math.min(u, v) + "-" + Math.max(u, v),
+            ip = pe.has(k);
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.strokeStyle = ip ? "#C0392B" : "#C8CDD6";
+          ctx.lineWidth = ip ? 3.2 : 1.3;
+          ctx.stroke();
+          const mx = (x1 + x2) / 2,
+            my = (y1 + y2) / 2,
+            dx = x2 - x1,
+            dy = y2 - y1,
+            len = Math.sqrt(dx * dx + dy * dy);
+          const ox = (-dy / len) * 12,
+            oy = (dx / len) * 12;
+          ctx.fillStyle = ip ? "#7B241C" : "#95A5A6";
+          ctx.font =
+            (ip ? "bold " : "") + Math.round(R * 0.44) + "px sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(w, mx + ox, my + oy);
+        });
+
+        // nodes
+        for (let id = 0; id < 10; id++) {
+          const [x, y] = gp(id),
+            inP = ps.has(id),
+            isStk = id === stk;
+          let fi, st, tc;
+          if (isStk) {
+            fi = "#7B241C";
+            st = "#641E16";
+            tc = "white";
+          } else if (id === S) {
+            fi = "#C0392B";
+            st = "#922B21";
+            tc = "white";
+          } else if (id === G) {
+            fi = "#1E8449";
+            st = "#196F3D";
+            tc = "white";
+          } else if (inP) {
+            fi = "#E67E22";
+            st = "#CA6F1E";
+            tc = "white";
+          } else {
+            fi = "#EEF0F4";
+            st = "#BDC3C7";
+            tc = "#4A5568";
+          }
+
+          if (isStk) {
+            ctx.beginPath();
+            ctx.arc(x, y, R + 8, 0, Math.PI * 2);
+            ctx.strokeStyle = "#E74C3C";
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 4]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+          }
+          ctx.beginPath();
+          ctx.arc(x, y, R, 0, Math.PI * 2);
+          ctx.fillStyle = fi;
+          ctx.fill();
+          ctx.strokeStyle = st;
+          ctx.lineWidth = inP || id === S || id === G || isStk ? 2.5 : 1.5;
+          ctx.stroke();
+
+          ctx.fillStyle = tc;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          if (isStk) {
+            ctx.font = "bold " + Math.round(R * 0.72) + "px sans-serif";
+            ctx.fillText("\u2715", x, y);
+          } else {
+            ctx.font = "bold " + Math.round(R * 0.6) + "px sans-serif";
+            ctx.fillText(id, x, y - R * 0.18);
+          }
+
+          ctx.fillStyle = "#4A5568";
+          ctx.font = Math.round(R * 0.42) + "px sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "top";
+          ctx.fillText(NL[id], x, y + R + 3);
+        }
+      }
+
+      // animation
+      let animT = null;
+      function animate(path, stk, done) {
+        if (animT) {
+          clearTimeout(animT);
+          animT = null;
+        }
+        const sl = document.getElementById("stepLbl");
+        sl.classList.add("on");
+        let step = 0;
+        draw([], null);
+        lock(false);
+        function tick() {
+          step++;
+          const cur = path.slice(0, step),
+            last = step >= path.length;
+          draw(cur, last ? stk : null);
+          sl.textContent = "Step " + step + " / " + path.length;
+          if (!last) {
+            animT = setTimeout(tick, 700);
+          } else {
+            animT = null;
+            sl.textContent = stk ? "Stuck — failed" : "Complete";
+            setTimeout(() => sl.classList.remove("on"), 2000);
+            lock(true);
+            if (done) done();
+          }
+        }
+        setTimeout(tick, 300);
+      }
+      function lock(on) {
+        document.getElementById("btnRun").disabled = !on;
+        document.getElementById("btnAll").disabled = !on;
+        document
+          .querySelectorAll(".algo-btn")
+          .forEach((b) => (b.disabled = !on));
+      }
+
+      // algorithms
+      function bfs() {
+        const t = performance.now(),
+          q = [[S, [S], 0]],
+          vis = new Set();
+        let exp = 0;
+        while (q.length) {
+          const [n, p, c] = q.shift();
+          if (vis.has(n)) continue;
+          vis.add(n);
+          exp++;
+          if (n === G)
+            return {
+              path: p,
+              cost: c,
+              exp,
+              ms: +(performance.now() - t).toFixed(4),
+            };
+          for (const [nb, w] of g[n])
+            if (!vis.has(nb)) q.push([nb, [...p, nb], c + w]);
+        }
+        return { path: [], cost: -1, exp, ms: 0 };
+      }
+      function dfs() {
+        const t = performance.now(),
+          stk = [[S, [S], 0]],
+          vis = new Set();
+        let exp = 0;
+        while (stk.length) {
+          const [n, p, c] = stk.pop();
+          if (vis.has(n)) continue;
+          vis.add(n);
+          exp++;
+          if (n === G)
+            return {
+              path: p,
+              cost: c,
+              exp,
+              ms: +(performance.now() - t).toFixed(4),
+            };
+          for (const [nb, w] of [...g[n]].reverse())
+            if (!vis.has(nb)) stk.push([nb, [...p, nb], c + w]);
+        }
+        return { path: [], cost: -1, exp, ms: 0 };
+      }
+      function ucs() {
+        const t = performance.now(),
+          h = [[0, S, [S]]],
+          vis = new Set();
+        let exp = 0;
+        while (h.length) {
+          h.sort((a, b) => a[0] - b[0]);
+          const [c, n, p] = h.shift();
+          if (vis.has(n)) continue;
+          vis.add(n);
+          exp++;
+          if (n === G)
+            return {
+              path: p,
+              cost: c,
+              exp,
+              ms: +(performance.now() - t).toFixed(4),
+            };
+          for (const [nb, w] of g[n])
+            if (!vis.has(nb)) h.push([c + w, nb, [...p, nb]]);
+        }
+        return { path: [], cost: -1, exp, ms: 0 };
+      }
+      function astar() {
+        const t = performance.now(),
+          h = [[H[S], 0, S, [S]]],
+          vis = new Set();
+        let exp = 0;
+        while (h.length) {
+          h.sort((a, b) => a[0] - b[0]);
+          const [, gg, n, p] = h.shift();
+          if (vis.has(n)) continue;
+          vis.add(n);
+          exp++;
+          if (n === G)
+            return {
+              path: p,
+              cost: gg,
+              exp,
+              ms: +(performance.now() - t).toFixed(4),
+            };
+          for (const [nb, w] of g[n])
+            if (!vis.has(nb)) {
+              const ng = gg + w;
+              h.push([ng + H[nb], ng, nb, [...p, nb]]);
+            }
+        }
+        return { path: [], cost: -1, exp, ms: 0 };
+      }
+      function hc() {
+        const t = performance.now();
+        let cur = S;
+        const path = [cur];
+        let cost = 0,
+          exp = 0,
+          stuckAt = null;
+        const vis = new Set([cur]);
+        while (cur !== G) {
+          exp++;
+          const cands = g[cur].filter(([nb]) => !vis.has(nb));
+          if (!cands.length) {
+            stuckAt = cur;
+            break;
+          }
+          cands.sort((a, b) => HC_H[a[0]] - HC_H[b[0]]);
+          const [bn, bw] = cands[0];
+          if (HC_H[bn] >= HC_H[cur] && cur !== S) {
+            stuckAt = cur;
+            break;
+          }
+          vis.add(bn);
+          path.push(bn);
+          cost += bw;
+          cur = bn;
+        }
+        return {
+          path,
+          cost: stuckAt !== null ? "—" : cost,
+          exp,
+          ms: +(performance.now() - t).toFixed(4),
+          failed: stuckAt !== null,
+          stuckAt,
+        };
+      }
+      let mc = 0;
+      function mm(n, d, mx, p, vis, a, b, pr) {
+        mc++;
+        if (n === G || d === 0) return [H[n], p];
+        const cn = g[n].filter(([nb]) => !vis.has(nb));
+        if (!cn.length) return [H[n], p];
+        let best = mx ? -Infinity : Infinity,
+          bp = p;
+        for (const [nb] of cn) {
+          const nv = new Set(vis);
+          nv.add(nb);
+          const [v, pp] = mm(nb, d - 1, !mx, [...p, nb], nv, a, b, pr);
+          if (mx ? v > best : v < best) {
+            best = v;
+            bp = pp;
+          }
+          if (pr) {
+            if (mx) {
+              a = Math.max(a, best);
+              if (b <= a) break;
+            } else {
+              b = Math.min(b, best);
+              if (b <= a) break;
+            }
+          }
+        }
+        return [best, bp];
+      }
+      function minimax(pr) {
+        mc = 0;
+        const t = performance.now();
+        const [, p] = mm(
+          S,
+          5,
+          true,
+          [S],
+          new Set([S]),
+          -Infinity,
+          Infinity,
+          pr,
+        );
+        let c = 0;
+        for (let i = 0; i < p.length - 1; i++)
+          c += (g[p[i]].find(([nb]) => nb === p[i + 1]) || [0, 0])[1];
+        return {
+          path: p,
+          cost: c,
+          exp: mc,
+          ms: +(performance.now() - t).toFixed(4),
+        };
+      }
+
+      const AM = {
+        BFS: { fn: bfs, label: "BFS", cat: "Uninformed" },
+        DFS: { fn: dfs, label: "DFS", cat: "Uninformed" },
+        UCS: { fn: ucs, label: "UCS", cat: "Informed" },
+        ASTAR: { fn: astar, label: "A*", cat: "Informed" },
+        HC: { fn: hc, label: "Hill Climbing", cat: "Local Search" },
+        MM: { fn: () => minimax(false), label: "Minimax", cat: "Adversarial" },
+        AB: {
+          fn: () => minimax(true),
+          label: "Alpha-Beta",
+          cat: "Adversarial",
+        },
+      };
+
+      let curAlgo = "BFS",
+        curRes = null;
+      const AR = {};
+
+      function sel(k, btn) {
+        curAlgo = k;
+        document
+          .querySelectorAll(".algo-btn")
+          .forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        document.getElementById("selLabel").textContent = AM[k].label;
+      }
+
+      function showRes(k, r) {
+        curRes = r;
+        const isHC = k === "HC",
+          bc = document.getElementById("boxCost"),
+          mc2 = document.getElementById("mCost"),
+          ms2 = document.getElementById("mCostSub");
+        if (isHC && r.failed) {
+          bc.classList.add("fail");
+          mc2.classList.add("red");
+          mc2.textContent = "FAILED";
+          ms2.textContent = "Goal not reached";
+        } else {
+          bc.classList.remove("fail");
+          mc2.classList.remove("red");
+          mc2.textContent = r.cost;
+          ms2.textContent = "Vulnerability score";
+        }
+        document.getElementById("mNodes").textContent = r.exp;
+        document.getElementById("mTime").textContent = r.ms + " ms";
+        document.getElementById("mAlgo").textContent = AM[k].label;
+
+        const pd = document.getElementById("pathDisp");
+        if (r.path && r.path.length) {
+          pd.innerHTML = r.path
+            .map((n, i) => {
+              const cls =
+                n === S
+                  ? "s"
+                  : n === G
+                    ? "g"
+                    : isHC && n === r.stuckAt
+                      ? "x"
+                      : "";
+              const arr =
+                i < r.path.length - 1
+                  ? '<span class="path-arrow"> &rsaquo; </span>'
+                  : "";
+              return `<span class="path-node ${cls}">${n}: ${NL[n]}</span>${arr}`;
+            })
+            .join("");
+          if (isHC && r.failed)
+            pd.innerHTML +=
+              ' <span class="path-arrow"> &rsaquo; </span><span class="path-node x">STUCK</span>';
+        } else {
+          pd.innerHTML = '<span class="path-empty">No path found</span>';
+        }
+
+        const wb = document.getElementById("warnBox"),
+          hi = document.getElementById("hcInfo");
+        if (isHC && r.failed) {
+          wb.textContent =
+            "Local maximum at Node " +
+            r.stuckAt +
+            " (" +
+            NL[r.stuckAt] +
+            "). All unvisited neighbors have a heuristic value equal to or worse than the current node. Hill Climbing cannot backtrack — the database was never reached.";
+          wb.classList.add("on");
+          hi.classList.add("on");
+        } else {
+          wb.classList.remove("on");
+          hi.classList.remove("on");
+        }
+
+        animate(r.path, isHC && r.failed ? r.stuckAt : null, null);
+      }
+
+      function runSel() {
+        const r = AM[curAlgo].fn();
+        AR[curAlgo] = r;
+        showRes(curAlgo, r);
+      }
+
+      function runAll() {
+        for (const k in AM) AR[k] = AM[k].fn();
+        document
+          .querySelectorAll(".algo-btn")
+          .forEach((b) => b.classList.remove("active"));
+        document.querySelectorAll(".algo-btn")[2].classList.add("active");
+        document.getElementById("selLabel").textContent = "UCS";
+        curAlgo = "UCS";
+        showRes("UCS", AR["UCS"]);
+        buildTable();
+      }
+
+      function buildTable() {
+        const ORD = ["BFS", "DFS", "UCS", "ASTAR", "HC", "MM", "AB"];
+        const nc = ORD.map((k) => {
+          const r = AR[k];
+          return r && typeof r.cost === "number" && r.cost >= 0
+            ? r.cost
+            : Infinity;
+        });
+        const mc3 = Math.min(...nc),
+          mn = Math.min(...ORD.map((k) => (AR[k] ? AR[k].exp : Infinity)));
+        const tb = document.getElementById("tblBody");
+        tb.innerHTML = "";
+        ORD.forEach((k) => {
+          const r = AR[k];
+          if (!r) return;
+          const isHC = k === "HC",
+            ib = !isHC && r.cost === mc3,
+            ie = r.exp === mn && !isHC;
+          const tag = ib
+            ? '<span class="tag t-opt">BEST COST</span>'
+            : ie
+              ? '<span class="tag t-eff">FEWEST NODES</span>'
+              : isHC
+                ? '<span class="tag t-fail">FAILURE CASE</span>'
+                : "";
+          const st =
+            isHC && r.failed
+              ? '<span style="color:#C0392B;font-weight:600">Stuck at Node ' +
+                r.stuckAt +
+                "</span>"
+              : '<span style="color:#1E8449">Goal reached</span>';
+          const tr = document.createElement("tr");
+          if (ib) tr.classList.add("best");
+          if (isHC) tr.classList.add("hcrow");
+          tr.innerHTML = `<td><strong>${AM[k].label}</strong>${tag}</td><td style="color:#718096">${AM[k].cat}</td><td style="font-family:monospace;font-size:12px">${r.path.join(" \u2192 ") || "N/A"}</td><td><strong>${isHC && r.failed ? "—" : r.cost}</strong></td><td>${r.exp}</td><td>${r.ms}</td><td>${st}</td>`;
+          tb.appendChild(tr);
+        });
+        document.getElementById("tblSec").classList.add("on");
+      }
+
+      window.addEventListener("load", () =>
+        setTimeout(() => {
+          cv.width = cv.offsetWidth;
+          cv.height = cv.offsetHeight;
+          draw([], null);
+          runSel();
+        }, 100),
+      );
+      window.addEventListener("resize", () => {
+        cv.width = cv.offsetWidth;
+        cv.height = cv.offsetHeight;
+        draw(
+          curRes ? curRes.path : [],
+          curRes && curRes.stuckAt ? curRes.stuckAt : null,
+        );
+      });
+    </script>
+  </body>
+</html>
